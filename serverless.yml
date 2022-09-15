@@ -26,16 +26,24 @@ provider:
 #                - "Ref" : "ServerlessDeploymentBucket"
 #                - "/*"
 
+custom:
+  SUFFIX: "mk" # 一意の名前を入力してください
+
 functions:
   hello:
     handler: handler.hello
 
 resources:
   Resources:
-#    NewResource:
-#      Type: AWS::S3::Bucket
-#      Properties:
-#        BucketName: my-new-bucket
+    ConnectInstance:
+      Type: AWS::Connect::Instance
+      Properties: 
+        Attributes: 
+          InboundCalls: true
+          OutboundCalls: true
+        IdentityManagementType: CONNECT_MANAGED
+        InstanceAlias: scsk-rdc-${self:custom.SUFFIX}
+
   Outputs:
     NewOutput:
       Description: "Description for the output"
