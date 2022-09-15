@@ -115,6 +115,54 @@ resources:
         InstanceId:  !GetAtt ConnectInstance.Id
         ContactFlowId: !Select [3, !Split ["/", !Ref ContactFlow]]
         PhoneNumberId: !Select [1, !Split ["/", !Ref PhoneNumber]]
+    BotRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lex.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: "EnableLogging"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - "logs:CreateLogStream"
+                    - "logs:PutLogEvents"
+                  Resource: '*'
+          - PolicyName: "RecordAudio"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - "s3:PutObject"
+                  Resource: "*"
+           
+    Bot:
+      Type: AWS::Lex::Bot
+      Properties:
+        DataPrivacy:
+          ChildDirected: false
+        IdleSessionTTLInSeconds: 300
+        Name: "MyBot"
+        RoleArn: !GetAtt BotRole.Arn
+        AutoBuildBotLocales: false
+        BotLocales:
+          - LocaleId: ja_JP
+            NluConfidenceThreshold: 0.5
+            Intents:
+              - Name: FallbackIntent
+                ParentIntentSignature: "AMAZON.FallbackIntent"
+              - Name: MyIntent
+                SampleUtterances:
+                  - Utterance: Fuga
+        
         
     GetSecurityProfileLambda:
       Type: AWS::Lambda::Function
