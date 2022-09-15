@@ -152,16 +152,85 @@ resources:
         IdleSessionTTLInSeconds: 300
         Name: "MyBot"
         RoleArn: !GetAtt BotRole.Arn
-        AutoBuildBotLocales: false
+        AutoBuildBotLocales: true
         BotLocales:
           - LocaleId: ja_JP
             NluConfidenceThreshold: 0.5
+            SlotTypes:
+              - Name: CauseTypes
+                ValueSelectionSetting:
+                  ResolutionStrategy: ORIGINAL_VALUE
+                SlotTypeValues:
+                  - SampleValue:
+                      Value: 風邪
+                  - SampleValue:
+                      Value: 頭痛
+                  - SampleValue:
+                      Value: 腹痛
+                  - SampleValue:
+                      Value: 事故
+                  - SampleValue:
+                      Value: 電車遅延
+                  - SampleValue:
+                      Value: 災害
+                  - SampleValue:
+                      Value: 死去
+                  - SampleValue:
+                      Value: 熱
+                  - SampleValue:
+                      Value: 倦怠感
+                  - SampleValue:
+                      Value: 通院
             Intents:
               - Name: FallbackIntent
+                Description: 休みの理由を尋ねるインテント
                 ParentIntentSignature: "AMAZON.FallbackIntent"
-              - Name: MyIntent
+              - Name: CauseIntent
                 SampleUtterances:
-                  - Utterance: Fuga
+                  - Utterance: お休みしたいです
+                  - Utterance: 具合が悪いです
+                  - Utterance: 出社できません
+                  - Utterance: "{PickupDate}、お休みしたいです"
+                  - Utterance: "{PickupDate}、{CauseType}のため、休みたいです"
+                  - Utterance: "{CauseType}のため、休みたいです"
+                Slots:
+                  - Name: CauseType
+                    SlotTypeName: CauseTypes
+                    ValueElicitationSetting:
+                      SlotConstraint: Required
+                      PromptSpecification:
+                        MaxRetries: 3
+                        MessageGroupsList:
+                          - Message:
+                              PlainTextMessage:
+                                Value: どのような理由でしょうか?
+                  - Name: PickupDate
+                    SlotTypeName: AMAZON.Date
+                    ValueElicitationSetting:
+                      SlotConstraint: Required
+                      PromptSpecification:
+                        MaxRetries: 3
+                        MessageGroupsList:
+                          - Message:
+                              PlainTextMessage:
+                                Value: いつお休みされますか?
+                SlotPriorities:
+                  - Priority: 1
+                    SlotName: CauseType
+                  - Priority: 2
+                    SlotName: PickupDate
+                IntentConfirmationSetting:
+                  PromptSpecification:
+                    MaxRetries: 3
+                    MessageGroupsList:
+                      - Message:
+                          PlainTextMessage:
+                            Value: わかりました。{PickupDate}、 {CauseType}でお休みされるとのことですね。
+                  DeclinationResponse:
+                    MessageGroupsList:
+                      - Message:
+                          PlainTextMessage:
+                            Value: はい、お休みの受付をキャンセルします。
         
         
     GetSecurityProfileLambda:
