@@ -26,8 +26,14 @@ provider:
 #                - "Ref" : "ServerlessDeploymentBucket"
 #                - "/*"
 
+layers:
+  latestBoto3:
+    package:
+      artifact: boto3-1.24.74.zip
+
 custom:
   SUFFIX: "mk" # 一意の名前を入力してください
+  CONNECT_ALIAS: scsk-rdc-${self:custom.SUFFIX}
 
 functions:
   hello:
@@ -42,9 +48,199 @@ resources:
           InboundCalls: true
           OutboundCalls: true
         IdentityManagementType: CONNECT_MANAGED
-        InstanceAlias: scsk-rdc-${self:custom.SUFFIX}
+        InstanceAlias: ${self:custom.CONNECT_ALIAS}
+    PhoneNumber:
+      Type: AWS::Connect::PhoneNumber
+      Properties: 
+        CountryCode: US
+        TargetArn: !GetAtt ConnectInstance.Arn
+        Type: DID
+    AdminUser:
+      Type: AWS::Connect::User
+      Properties: 
+        IdentityInfo: 
+          Email: admin@example.com
+          FirstName: admin
+          LastName: rdc
+        InstanceArn: !GetAtt ConnectInstance.Arn
+        Password: P@ssW0rd
+        PhoneConfig: 
+          PhoneType: SOFT_PHONE
+        RoutingProfileArn: !GetAtt DefaultRoutingProfile.Arn
+        SecurityProfileArns: 
+          - !GetAtt SecurityProfileAdmin.Arn
+        Username: admin
+    AmazonConnectFullAccessRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Path: /
+        ManagedPolicyArns:
+          - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          - "arn:aws:iam::aws:policy/AmazonConnect_FullAccess"
+    SecurityProfileAdmin:
+      Type: Custom::GetSecurityProfileLambda
+      Version: '1.0'
+      Properties:
+        ServiceToken: !GetAtt GetSecurityProfileLambda.Arn
+        Name: "Admin"
+        InstanceId: !GetAtt ConnectInstance.Id
+    DefaultRoutingProfile:
+      Type: Custom::GetRoutingProfileLambda
+      Version: '1.0'
+      Properties:
+        ServiceToken: !GetAtt GetRoutingProfileLambda.Arn
+        Name: "Basic Routing Profile"
+        InstanceId: !GetAtt ConnectInstance.Id
+    ContactFlow:
+      Type: AWS::Connect::ContactFlow
+      Properties:
+        Name: WelcomeToRDC
+        Description: Welcome message to new comer
+        InstanceArn: !GetAtt ConnectInstance.Arn
+        Type: CONTACT_FLOW
+        Content: ${file(./ContactFlow_WelcomeToRDC.json.txt)}
+        State: ACTIVE
+    AssociatePhoneNumberContactFlow:
+      Type: Custom::AssociatePhoneNumberContactFlowLambda
+      Version: '1.0'
+      Properties:
+        ServiceToken: !GetAtt AssociatePhoneNumberContactFlowLambda.Arn
+        InstanceId:  !GetAtt ConnectInstance.Id
+        ContactFlowId: !Select [3, !Split ["/", !Ref ContactFlow]]
+        PhoneNumberId: !Select [1, !Split ["/", !Ref PhoneNumber]]
+        
+    GetSecurityProfileLambda:
+      Type: AWS::Lambda::Function
+      Properties:
+        Code:
+          ZipFile: |
+            import json
+            import boto3
+            import cfnresponse
+            def handler(event, context):
+              try:
+                print(event)
+                if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+                
+                client = boto3.client('connect');
+                instanceId = event['ResourceProperties']['InstanceId']
+                name = event['ResourceProperties']['Name']
+                response = client.list_security_profiles(
+                  InstanceId=instanceId,
+                  MaxResults=1000
+                )
+                profile = None
+                for item in response['SecurityProfileSummaryList']:
+                  if item["Name"] == name:
+                    profile = item
+                    break
+                if profile is None:
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, reason=f"{name} is not in security profiles of Connect Instance {isntanceId}")
+                else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, profile)
+              except Exception as e:
+                cfnresponse.send(event, context, cfnresponse.FAILED, {})
+        Handler: index.handler
+        MemorySize: 128
+        Role: !GetAtt AmazonConnectFullAccessRole.Arn
+        Runtime: python3.9
+        Timeout: 60
+    
+    GetRoutingProfileLambda:
+      Type: AWS::Lambda::Function
+      Properties:
+        Code:
+          ZipFile: |
+            import json
+            import boto3
+            import cfnresponse
+            def handler(event, context):
+              try:
+                print(event)
+                if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+              
+                client = boto3.client('connect');
+                instanceId = event['ResourceProperties']['InstanceId']
+                name = event['ResourceProperties']['Name']
+                response = client.list_routing_profiles(
+                  InstanceId=instanceId,
+                  MaxResults=1000
+                )
+                profile = None
+                for item in response['RoutingProfileSummaryList']:
+                  if item["Name"] == name:
+                    profile = item
+                    break
+                if profile is None:
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, reason=f"{name} is not in routing profiles of Connect Instance {instanceId}")
+                else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, profile)
+              except Exception as e:
+                cfnresponse.send(event, context, cfnresponse.FAILED, {})
+        Handler: index.handler
+        MemorySize: 128
+        Role: !GetAtt AmazonConnectFullAccessRole.Arn
+        Runtime: python3.9
+        Timeout: 60
+    
+    AssociatePhoneNumberContactFlowLambda:
+      Type: AWS::Lambda::Function
+      Properties:
+        Code:
+          ZipFile: |
+            import json
+            import botocore
+            import boto3
+            import cfnresponse
+            def handler(event, context):
+              try:
+                print('botocore vertion: {0}'.format(botocore.__version__))
+                print('boto3 vertion: {0}'.format(boto3.__version__))
+                print(event)
+                client = boto3.client('connect');
+                instanceId = event['ResourceProperties']['InstanceId']
+                contactFlowId = event['ResourceProperties']['ContactFlowId']
+                phoneNumberId = event['ResourceProperties']['PhoneNumberId']
+
+                if event['RequestType'] == 'Delete':
+                  response = client.disassociate_phone_number_contact_flow(
+                    PhoneNumberId=phoneNumberId,
+                    InstanceId=instanceId
+                  )
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                else: 
+                  response = client.associate_phone_number_contact_flow(
+                    InstanceId=instanceId,
+                    PhoneNumberId=phoneNumberId,
+                    ContactFlowId=contactFlowId
+                  )
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                print(e)
+                cfnresponse.send(event, context, cfnresponse.FAILED, {})
+        Layers:
+          - !Ref LatestBoto3LambdaLayer
+        Handler: index.handler
+        MemorySize: 128
+        Role: !GetAtt AmazonConnectFullAccessRole.Arn
+        Runtime: python3.9
+        Timeout: 60
 
   Outputs:
-    NewOutput:
-      Description: "Description for the output"
-      Value: "Some output value"
+    ConnectURL:
+      Description: "Access URL for Connect"
+      Value: "https://${self:custom.CONNECT_ALIAS}.my.connect.aws/"
+    MyPhoneNumber:
+      Description: "Phone Number"
+      Value: !GetAtt PhoneNumber.Address
