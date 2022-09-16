@@ -22,6 +22,7 @@ package:
   patterns:
     - '!node_modules/**'
     - '!boto3-1.24.74.zip'
+    - '!docs/**'
 
 functions:
   record:
