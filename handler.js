@@ -1,18 +1,15 @@
 'use strict';
 
-module.exports.hello = async (event) => {
+module.exports.record_cause = async (event) => {
+  console.log(event);
+  
+  if (event['currentIntent']['name'] == "CauseIntent") {
+    console.log(event['currentIntent']['slots']);
+  }
   return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        message: 'Go Serverless v1.0! Your function executed successfully!',
-        input: event,
-      },
-      null,
-      2
-    ),
+    "dialogAction" : {
+      "type": "Close",
+      "fullfillmentState": "Fulfiled"
+    }
   };
-
-  // Use this code if you don't use the http event with the LAMBDA-PROXY integration
-  // return { message: 'Go Serverless v1.0! Your function executed successfully!', event };
 };

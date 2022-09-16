@@ -8,24 +8,6 @@ provider:
 
   region: ap-northeast-1
 
-# you can add statements to the Lambda function's IAM Role here
-#  iam:
-#    role:
-#      statements:
-#        - Effect: "Allow"
-#          Action:
-#            - "s3:ListBucket"
-#          Resource: { "Fn::Join" : ["", ["arn:aws:s3:::", { "Ref" : "ServerlessDeploymentBucket" } ] ]  }
-#        - Effect: "Allow"
-#          Action:
-#            - "s3:PutObject"
-#          Resource:
-#            Fn::Join:
-#              - ""
-#              - - "arn:aws:s3:::"
-#                - "Ref" : "ServerlessDeploymentBucket"
-#                - "/*"
-
 layers:
   latestBoto3:
     package:
@@ -34,10 +16,16 @@ layers:
 custom:
   SUFFIX: "mk" # 一意の名前を入力してください
   CONNECT_ALIAS: scsk-rdc-${self:custom.SUFFIX}
+  BOT_NAME: "MyBot"
+  
+package:
+  patterns:
+    - '!node_modules/**'
+    - '!boto3-1.24.74.zip'
 
 functions:
-  hello:
-    handler: handler.hello
+  record:
+    handler: handler.record_cause
 
 resources:
   Resources:
@@ -84,6 +72,7 @@ resources:
         ManagedPolicyArns:
           - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
           - "arn:aws:iam::aws:policy/AmazonConnect_FullAccess"
+          - "arn:aws:iam::aws:policy/AmazonLexFullAccess"
     SecurityProfileAdmin:
       Type: Custom::GetSecurityProfileLambda
       Version: '1.0'
@@ -105,7 +94,7 @@ resources:
         Description: Welcome message to new comer
         InstanceArn: !GetAtt ConnectInstance.Arn
         Type: CONTACT_FLOW
-        Content: ${file(./ContactFlow_WelcomeToRDC.json.txt)}
+        Content: ${file(ContactFlow_WelcomeToRDC.json.txt)} # ${file(ContactFlow_WelcomeToRDC.json.txt)}
         State: ACTIVE
     AssociatePhoneNumberContactFlow:
       Type: Custom::AssociatePhoneNumberContactFlowLambda
@@ -143,14 +132,21 @@ resources:
                   Action:
                     - "s3:PutObject"
                   Resource: "*"
-           
+          - PolicyName: "BotPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - "polly:SynthesizeSpeech"
+                  Resource: "*"
     Bot:
       Type: AWS::Lex::Bot
       Properties:
         DataPrivacy:
           ChildDirected: false
         IdleSessionTTLInSeconds: 300
-        Name: "MyBot"
+        Name: ${self:custom.BOT_NAME}
         RoleArn: !GetAtt BotRole.Arn
         AutoBuildBotLocales: true
         BotLocales:
@@ -231,8 +227,18 @@ resources:
                       - Message:
                           PlainTextMessage:
                             Value: はい、お休みの受付をキャンセルします。
-        
-        
+    
+    AssociateLexBot:  
+      Type: Custom::AssociateLexBotLambda
+      Version: '1.0'
+      DependsOn: Bot
+      Properties:
+        ServiceToken: !GetAtt AssociateLexBotLambda.Arn
+        InstanceId: !GetAtt ConnectInstance.Id
+        BotAliasArn: !Sub 
+          - "arn:aws:lex:${aws:region}:${aws:accountId}:bot-alias/${BOT_ID}/TSTALIASID"
+          - { BOT_ID: !GetAtt Bot.Id }
+    
     GetSecurityProfileLambda:
       Type: AWS::Lambda::Function
       Properties:
@@ -341,6 +347,51 @@ resources:
                     InstanceId=instanceId,
                     PhoneNumberId=phoneNumberId,
                     ContactFlowId=contactFlowId
+                  )
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                print(e)
+                cfnresponse.send(event, context, cfnresponse.FAILED, {})
+        Layers:
+          - !Ref LatestBoto3LambdaLayer
+        Handler: index.handler
+        MemorySize: 128
+        Role: !GetAtt AmazonConnectFullAccessRole.Arn
+        Runtime: python3.9
+        Timeout: 60
+        
+    AssociateLexBotLambda:
+      Type: AWS::Lambda::Function
+      Properties:
+        Code:
+          ZipFile: |
+            import json
+            import botocore
+            import boto3
+            import cfnresponse
+            def handler(event, context):
+              try:
+                print('botocore vertion: {0}'.format(botocore.__version__))
+                print('boto3 vertion: {0}'.format(boto3.__version__))
+                print(event)
+                client = boto3.client('connect');
+                instanceId = event['ResourceProperties']['InstanceId']
+                botAliasArn = event['ResourceProperties']['BotAliasArn']
+
+                if event['RequestType'] == 'Delete':
+                  response = client.disassociate_bot(
+                    InstanceId=instanceId,
+                    LexV2Bot={
+                      'AliasArn': botAliasArn
+                    }
+                  )
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                else: 
+                  response = client.associate_bot(
+                    InstanceId=instanceId,
+                    LexV2Bot={
+                      'AliasArn': botAliasArn
+                    }
                   )
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
               except Exception as e:

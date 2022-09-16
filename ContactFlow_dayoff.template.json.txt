@@ -1,0 +1,262 @@
+{
+    "Version": "2019-10-30",
+    "StartAction": "98319228-d152-4095-95ed-5a9dd47ceff8",
+    "Metadata": {
+        "entryPointPosition": {
+            "x": 40,
+            "y": 40
+        },
+        "ActionMetadata": {
+            "bec6ad1e-7daf-4198-9241-79ea08a3505c": {
+                "position": {
+                    "x": 245.60000000000002,
+                    "y": 20.8
+                },
+                "children": [
+                    "1d6cf780-cd7a-47e0-be8c-a59708daf655"
+                ],
+                "overrideConsoleVoice": false,
+                "fragments": {
+                    "SetContactData": "1d6cf780-cd7a-47e0-be8c-a59708daf655"
+                },
+                "overrideLanguageAttribute": true
+            },
+            "1d6cf780-cd7a-47e0-be8c-a59708daf655": {
+                "position": {
+                    "x": 245.60000000000002,
+                    "y": 20.8
+                },
+                "dynamicParams": []
+            },
+            "98319228-d152-4095-95ed-5a9dd47ceff8": {
+                "position": {
+                    "x": 35.2,
+                    "y": 446.40000000000003
+                }
+            },
+            "43cc0c12-da0a-44e3-9156-4eac579ebea4": {
+                "position": {
+                    "x": 370.40000000000003,
+                    "y": 572.8000000000001
+                }
+            },
+            "5f3f41ca-f271-4c09-a3b9-277e021674ee": {
+                "position": {
+                    "x": 154.4,
+                    "y": 202.4
+                }
+            },
+            "b68fd89f-0257-4e00-a78c-4e9dcc029de5": {
+                "position": {
+                    "x": 598.4,
+                    "y": 200
+                }
+            },
+            "dfe69ee6-18e3-41cf-a90d-80c384733702": {
+                "position": {
+                    "x": 837.6,
+                    "y": 650.4000000000001
+                }
+            },
+            "bfcb30a6-848a-4d30-a98c-714aa4f6954e": {
+                "position": {
+                    "x": 361.6,
+                    "y": 201.60000000000002
+                },
+                "parameters": {
+                    "LexV2Bot": {
+                        "AliasArn": {
+                            "displayName": "TestBotAlias",
+                            "useLexBotDropdown": true,
+                            "lexV2BotName": "MyBot"
+                        }
+                    }
+                },
+                "useLexBotDropdown": true,
+                "lexV2BotName": "MyBot",
+                "conditionMetadata": [
+                    {
+                        "id": "ee9d8336-a12e-4ce3-a9d3-e14ea9547aea",
+                        "operator": {
+                            "name": "Equals",
+                            "value": "Equals",
+                            "shortDisplay": "="
+                        },
+                        "value": "CauseIntent"
+                    },
+                    {
+                        "id": "1a3c0b48-1b7d-4706-bd63-aacbc8bb032b",
+                        "operator": {
+                            "name": "Equals",
+                            "value": "Equals",
+                            "shortDisplay": "="
+                        },
+                        "value": "FallbackIntent"
+                    }
+                ]
+            },
+            "ae12b11e-4910-4441-8af3-100d35d4c807": {
+                "position": {
+                    "x": 613.6,
+                    "y": 380.8
+                }
+            }
+        },
+        "name": "休暇受付",
+        "description": "",
+        "type": "contactFlow",
+        "status": "published",
+        "hash": {}
+    },
+    "Actions": [
+        {
+            "Parameters": {
+                "TextToSpeechVoice": "Mizuki"
+            },
+            "Identifier": "bec6ad1e-7daf-4198-9241-79ea08a3505c",
+            "Type": "UpdateContactTextToSpeechVoice",
+            "Transitions": {
+                "NextAction": "1d6cf780-cd7a-47e0-be8c-a59708daf655"
+            }
+        },
+        {
+            "Parameters": {
+                "LanguageCode": "ja-JP"
+            },
+            "Identifier": "1d6cf780-cd7a-47e0-be8c-a59708daf655",
+            "Type": "UpdateContactData",
+            "Transitions": {
+                "NextAction": "5f3f41ca-f271-4c09-a3b9-277e021674ee",
+                "Errors": [
+                    {
+                        "NextAction": "5f3f41ca-f271-4c09-a3b9-277e021674ee",
+                        "ErrorType": "NoMatchingError"
+                    }
+                ]
+            }
+        },
+        {
+            "Parameters": {
+                "FlowLoggingBehavior": "Enabled"
+            },
+            "Identifier": "98319228-d152-4095-95ed-5a9dd47ceff8",
+            "Type": "UpdateFlowLoggingBehavior",
+            "Transitions": {
+                "NextAction": "bec6ad1e-7daf-4198-9241-79ea08a3505c"
+            }
+        },
+        {
+            "Parameters": {
+                "Text": "何か問題があるようです。管理者に確認してください。"
+            },
+            "Identifier": "43cc0c12-da0a-44e3-9156-4eac579ebea4",
+            "Type": "MessageParticipant",
+            "Transitions": {
+                "NextAction": "dfe69ee6-18e3-41cf-a90d-80c384733702",
+                "Errors": [
+                    {
+                        "NextAction": "dfe69ee6-18e3-41cf-a90d-80c384733702",
+                        "ErrorType": "NoMatchingError"
+                    }
+                ]
+            }
+        },
+        {
+            "Parameters": {
+                "SSML": "<speak>\n<s>はい、アールアンドディーセンターです。</s>\n</speak>"
+            },
+            "Identifier": "5f3f41ca-f271-4c09-a3b9-277e021674ee",
+            "Type": "MessageParticipant",
+            "Transitions": {
+                "NextAction": "bfcb30a6-848a-4d30-a98c-714aa4f6954e",
+                "Errors": [
+                    {
+                        "NextAction": "43cc0c12-da0a-44e3-9156-4eac579ebea4",
+                        "ErrorType": "NoMatchingError"
+                    }
+                ]
+            }
+        },
+        {
+            "Parameters": {
+                "SSML": "<speak>\n<s>承知しました。</s>\n<s>お体にお気をつけて。</s>\n</speak>"
+            },
+            "Identifier": "b68fd89f-0257-4e00-a78c-4e9dcc029de5",
+            "Type": "MessageParticipant",
+            "Transitions": {
+                "NextAction": "dfe69ee6-18e3-41cf-a90d-80c384733702",
+                "Errors": [
+                    {
+                        "NextAction": "dfe69ee6-18e3-41cf-a90d-80c384733702",
+                        "ErrorType": "NoMatchingError"
+                    }
+                ]
+            }
+        },
+        {
+            "Parameters": {},
+            "Identifier": "dfe69ee6-18e3-41cf-a90d-80c384733702",
+            "Type": "DisconnectParticipant",
+            "Transitions": {}
+        },
+        {
+            "Parameters": {
+                "Text": "ご要件は何でしょうか。",
+                "LexV2Bot": {
+                    "AliasArn": "arn:aws:lex:ap-northeast-1:603038397687:bot-alias/KLMITCQC3V/TSTALIASID"
+                }
+            },
+            "Identifier": "bfcb30a6-848a-4d30-a98c-714aa4f6954e",
+            "Type": "ConnectParticipantWithLexBot",
+            "Transitions": {
+                "NextAction": "43cc0c12-da0a-44e3-9156-4eac579ebea4",
+                "Conditions": [
+                    {
+                        "NextAction": "b68fd89f-0257-4e00-a78c-4e9dcc029de5",
+                        "Condition": {
+                            "Operator": "Equals",
+                            "Operands": [
+                                "CauseIntent"
+                            ]
+                        }
+                    },
+                    {
+                        "NextAction": "ae12b11e-4910-4441-8af3-100d35d4c807",
+                        "Condition": {
+                            "Operator": "Equals",
+                            "Operands": [
+                                "FallbackIntent"
+                            ]
+                        }
+                    }
+                ],
+                "Errors": [
+                    {
+                        "NextAction": "ae12b11e-4910-4441-8af3-100d35d4c807",
+                        "ErrorType": "NoMatchingCondition"
+                    },
+                    {
+                        "NextAction": "43cc0c12-da0a-44e3-9156-4eac579ebea4",
+                        "ErrorType": "NoMatchingError"
+                    }
+                ]
+            }
+        },
+        {
+            "Parameters": {
+                "Text": "<speak>\n<s>お役に立てず申し訳ありません。</s>\n<s>再度掛け直すか、管理者へご連絡ください。</s>\n</speak>"
+            },
+            "Identifier": "ae12b11e-4910-4441-8af3-100d35d4c807",
+            "Type": "MessageParticipant",
+            "Transitions": {
+                "NextAction": "dfe69ee6-18e3-41cf-a90d-80c384733702",
+                "Errors": [
+                    {
+                        "NextAction": "dfe69ee6-18e3-41cf-a90d-80c384733702",
+                        "ErrorType": "NoMatchingError"
+                    }
+                ]
+            }
+        }
+    ]
+}
